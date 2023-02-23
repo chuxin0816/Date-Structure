@@ -109,18 +109,14 @@ bool Balance(range_node a) {
 bool islchild(range_node* g) { return g->parent && (g->parent->lc == g); }
 bool isrchild(range_node* g) { return g->parent && (g->parent->rc == g); }
 void updateheight(range_node* g) {
-  if (stature(g->lc) > stature(g->rc)) {
-    g->height = stature(g->lc) + 1;
-  } else {
-    g->height = stature(g->rc) + 1;
-  }
+  g->height = (stature(g->lc) < stature(g->rc)) ? stature(g->rc) + 1
+                                                : stature(g->lc) + 1;
 }
 range_node* tallerchild(range_node* g) {
-  return (stature(g->lc) > stature(g->rc))
-             ? g->lc
-             : (((stature(g->lc) < stature(g->rc))
-                     ? g->rc
-                     : (islchild(g) ? g->lc : g->rc)));
+  return (stature(g->lc) > stature(g->rc))   ? g->lc
+         : (stature(g->lc) < stature(g->rc)) ? g->rc
+         : islchild(g)                       ? g->lc
+                                             : g->rc;
 }
 range_node*& rangetree::fromparento(range_node* g) {
   if (g->parent) {
@@ -260,10 +256,7 @@ void merge_x(station_type data[], int lo, int mi, int hi) {
     else
       data[lo++] = data[mi++];
   }
-  if (i == t)
-    ;
-  else
-    while (lo < hi) data[lo++] = a1[i++];
+  while (i < t) data[lo++] = a1[i++];
   delete[] a1;
 }
 void mergesort_x(station_type data[], int lo, int hi) {
@@ -375,7 +368,6 @@ void midtravel(range_node* r) {
   printf("%d(%d)\n", r->data.x, r->data.y);
   if (r->rc) midtravel(r->rc);
 } */
-
 int main() {
   n = GetNumOfStation();
   if (n == 0) {
@@ -388,7 +380,6 @@ int main() {
   a.insertAsRoot(stations[0]);
   for (auto i = 1; i < n; i++) a.insert(stations[i]);
   // 为了防止出现先大的插入导致后面小的没有位置，所以得先排序;
-
   mergesort_x(stations, 0, n);
   int i = 0;
   a._hot = NULL;
