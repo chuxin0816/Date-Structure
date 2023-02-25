@@ -3,6 +3,7 @@
 #include "temperature.h"
 #define maxn 50000
 using namespace std;
+int n;
 struct range_node;  // 范围查询的节点构成范围查询树
 // station_type是每一个观测站的具体内容（包括了x,y坐标，温度temp，
 // 观测站内部还有一个指针c，是用来指向叶子节点，然后用来回溯路径）
@@ -69,8 +70,8 @@ struct range_node {
 struct rangetree {
   // 所包含的数据成员;
   rangetree() { range_node(); }
-  range_node* _hot;   // 待插入点的父亲节点
-  range_node* _root;  // 根节点
+  range_node* _hot = nullptr;   // 待插入点的父亲节点
+  range_node* _root = nullptr;  // 根节点
   range_node*& search(const int& e);
   void insertAsRoot(const station_type& e);
   range_node* insert(const station_type& data);
@@ -194,11 +195,6 @@ range_node* rangetree::rotateAt(range_node* v) {
 // AVL树构建完毕---------------------------------------------------------
 
 bool isleaf(range_node* root) { return root && (!root->lc && !root->rc); }
-int n;
-long long int record = 0;
-int count;
-station_type stack_x1[100], stack_x2[100];
-int road_x1, road_x2;
 void merge_y(fctree*& a1, fctree data_lc[], fctree data_rc[], int n_lc,
              int n_rc) {
   a1 = new fctree[n_lc + n_rc];
@@ -209,14 +205,12 @@ void merge_y(fctree*& a1, fctree data_lc[], fctree data_rc[], int n_lc,
     else
       a1[k++].data = data_rc[j++].data;
   }
-  if (i == n_lc)
-    while (k < n_lc + n_rc) {
-      a1[k++].data = data_rc[j++].data;
-    }
-  else
-    while (k < n_lc + n_rc) {
-      a1[k++].data = data_lc[i++].data;
-    }
+  while (j < n_rc) {
+    a1[k++].data = data_rc[j++].data;
+  }
+  while (i < n_lc) {
+    a1[k++].data = data_lc[i++].data;
+  }
 }
 // 查找叶子节点并且插入对应的x值节点，注意，每插完一次，每个节点的y值也会更新一次
 // 节点用fctree装y值
@@ -269,6 +263,10 @@ void mergesort_x(station_type data[], int lo, int hi) {
   } else
     return;
 }
+long long int record = 0;
+int count;
+station_type stack_x1[100], stack_x2[100];
+int road_x1, road_x2;
 // 寻找x1和x2
 void search_x1(range_node* root, int x1, int x2, station_type stack[],
                int& road, int lo, int hi) {
@@ -286,8 +284,7 @@ void search_x1(range_node* root, int x1, int x2, station_type stack[],
       road++;
       root = root->parent;
     }
-  } else
-    ;
+  }
 }
 void search_x2(range_node* root, int x1, int x2, station_type stack[],
                int& road, int lo, int hi) {
@@ -306,8 +303,7 @@ void search_x2(range_node* root, int x1, int x2, station_type stack[],
       road++;
       root = root->parent;
     }
-  } else
-    ;
+  }
 }
 // 寻找每条路径的公共节点，从该节点开始回溯
 range_node* common_root() {
@@ -382,7 +378,6 @@ int main() {
   // 为了防止出现先大的插入导致后面小的没有位置，所以得先排序;
   mergesort_x(stations, 0, n);
   int i = 0;
-  a._hot = NULL;
   a.search_leaf(a._root, i, a._hot);
   // 先序和中序遍历
   // midtravel(a._root);
@@ -437,6 +432,6 @@ int main() {
       stack_x2[i].y = 0;
       stack_x2[i].temp = 0;
     }
-    t1 = t2 = road_x1 = road_x2 = record = count = 0;
+    road_x1 = road_x2 = record = count = 0;
   }
 }

@@ -2,8 +2,17 @@
 
 #include <iostream>
 using namespace std;
+int n;
+struct Node;
 struct Station {
   int x, y, temp;
+  Station& operator=(const Station& a) {
+    x = a.x;
+    y = a.y;
+    temp = a.temp;
+    return *this;
+  }
+  Node *c, *road = nullptr;
 };
 Station stations[50010];
 struct Node {
@@ -12,9 +21,37 @@ struct Node {
   int height = 0;
   Node(const Station& e, Node* p, Node* lc = nullptr, Node* rc = nullptr)
       : date(e), parent(p), lc(lc), rc(rc){};
+  Fctree* fc;
+  int fc_size = 0;
 };
+struct Fctree {
+  Station date;
+  bool operator<(const Fctree& a) {
+    if (date.y < a.date.y)
+      return true;
+    else if (date.y == a.date.y) {
+      if (date.x < a.date.x)
+        return true;
+      else
+        return false;
+    } else
+      return false;
+  }
+  bool operator>(const Fctree& a) {
+    if (date.y > a.date.y)
+      return true;
+    else if (date.y == a.date.y) {
+      if (date.x > a.date.x)
+        return true;
+      else
+        return false;
+    } else
+      return false;
+  }
+};
+
 struct Tree {
-  Node *root, *hot;
+  Node *root = nullptr, *hot = nullptr;
   void InsertAsRoot(const Station& e);
   Node*& searchin(Node*& root, const int& e, Node*& hot);
   Node*& search(const int& e);
@@ -23,7 +60,7 @@ struct Tree {
   Node* connect34(Node* a, Node* b, Node* c, Node* l1, Node* l2, Node* l3,
                   Node* l4);
   Node* RotateAt(Node* e);
-  void search_leaf();
+  void search_leaf(Node*& v, int& i, Node* hot);
   int size = 0;
 };
 void Tree::InsertAsRoot(const Station& e) {
@@ -117,6 +154,40 @@ Node* Tree::RotateAt(Node* e) {
   }
 }
 bool isleaf(const Node* e) { return e && !e->lc && !e->rc; }
+void Merge_y(Fctree*& a, Fctree lc[], Fctree rc[], int n_lc, int n_rc) {
+  a = new Fctree[n_lc + n_rc];
+  int i = 0, j = 0, k = 0;
+  while (i < n_lc && j < n_rc) {
+    if (lc < rc)
+      a[k++].date = lc[i++].date;
+    else
+      a[k++].date = rc[j++].date;
+  }
+  while (i < n_lc) a[k++].date = lc[i++].date;
+  while (j < n_rc) a[k++].date = rc[j++].date;
+}
+void Tree::search_leaf(Node*& v, int& i, Node* hot) {
+  if (!v) {
+    if (i < n) {
+      stations[i].c = v = new Node(stations[i], hot);
+      v->fc = new Fctree[1];
+      v->fc->date = stations[i++];
+      v->fc_size++;
+    }
+  } else {
+    hot = v;
+    search_leaf(v->lc, i, hot);
+    search_leaf(v->rc, i, hot);
+    if (v->lc && v->rc) {
+      Merge_y(v, v->lc, v->rc, v->lc->fc_size, v->rc->fc_size);
+      v->fc_size = v->lc->fc_size + v->rc->fc_size;
+    } else {
+      v->fc = new Fctree[v->lc->fc_size];
+      for (int i = 0; i < v->lc->fc_size; ++i) v->fc[i].date = v->lc->date;
+      v->fc_size = v->lc->fc_size;
+    }
+  }
+}
 void Merge_x(Station stations[], int lo, int mi, int hi) {
   Station* a = new Station[mi - lo];
   for (int i = 0; i < mi - lo; ++i) a[i] = stations[lo + i];
@@ -142,6 +213,43 @@ void Mergesort_x(Station stations[], int lo, int hi) {
     Merge_x(stations, lo, mi, hi);
   }
 }
+int cnt,road_x1,road_x2;
+long long sum;
+Station stack_x1[100],stack_x2[100];
+void search_x1(Node* root,int x1,int x2,Station stack[],int& road,int lo,int hi){
+  int length=hi;
+  while(lo<hi){
+    int mi=(lo+hi)>>1;
+    stations[mi]<x1?lo=mi+1:hi=mi;
+  }
+  if(lo<length&&stations[lo].x<=x2){
+    auto root=stations[lo].c;
+    while(root){
+      stack[road]=root->date;
+      stack[road].c=root;
+      if(!isleaf(stack[road].c)) stack[road].road=stack[road-1].c;
+      road++;
+      root=root->parent;
+    }
+  }
+}
+void search_x2(Node* root,int x1,int x2,Station stack[],int& road,int lo,int hi){
+  while(lo<hi){
+    int mi=(lo+hi)>>1;
+    stations[mi]>x2?hi=mi:lo=mi+1;
+  }
+  lo--;
+  if(lo>-1&&stations[lo].x>=x1){
+    auto root=stations[lo].c;
+    while(root){
+      stack[road]=root->date;
+      stack[road].c=root;
+      if(!isleaf(stack[road].c)) stack[road].road=stack[road].c;
+      road++;
+      root=root->parent;
+    }
+  }
+}
 int main() {
   int n;
   n = GetNumOfStation();
@@ -156,7 +264,9 @@ int main() {
   }
   a.InsertAsRoot(stations[0]);
   for (int i = 1; i < n; ++i) a.insert(stations[i]);
-  Mergesort_x(stations,0,n);
+  Mergesort_x(stations, 0, n);
+  int i = 0;
+  a.search_leaf(a.root, i, a.hot);
   while (GetQuery(&x1, &y1, &x2, &y2)) {
     Response();
   }
