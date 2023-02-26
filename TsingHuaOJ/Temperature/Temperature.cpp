@@ -1,177 +1,194 @@
 #include "temperature.h"
-
-#include <iostream>
-using namespace std;
+#define maxn 50000
 int n;
-struct Node;
-struct Station {
-  int x, y, temp;
-  Station& operator=(const Station& a) {
-    x = a.x;
-    y = a.y;
-    temp = a.temp;
+struct range_node;
+struct station_type {
+  int x, y;
+  int temp;
+  station_type& operator=(const station_type& data) {
+    x = data.x;
+    y = data.y;
+    temp = data.temp;
     return *this;
   }
-  Node *c, *road = nullptr;
+  range_node *c, *road = nullptr;
 };
-Station stations[50010];
-struct Node {
-  Station date;
-  Node *parent, *lc, *rc;
-  int height = 0;
-  Node(const Station& e, Node* p, Node* lc = nullptr, Node* rc = nullptr)
-      : date(e), parent(p), lc(lc), rc(rc){};
-  Fctree* fc;
+station_type stations[maxn];
+struct fctree {
+  station_type data;
+  bool operator>(const fctree& a) {
+    if (data.y > a.data.y)
+      return true;
+    else if (data.y == a.data.y) {
+      if (data.x > a.data.x)
+        return true;
+      else
+        return false;
+    } else
+      return false;
+  }
+  bool operator<(const fctree& a) {
+    if (data.y < a.data.y)
+      return true;
+    else if (data.y == a.data.y) {
+      if (data.x < a.data.x)
+        return true;
+      else
+        return false;
+    } else
+      return false;
+  }
+};
+struct range_node {
+  range_node *rc, *lc, *parent;
+  fctree* fc;
   int fc_size = 0;
+  station_type data;
+  int height = 0;
+  range_node(const station_type& e, range_node* p, range_node* lc = nullptr,
+             range_node* rc = nullptr, fctree* fc = nullptr)
+      : data(e), parent(p), lc(lc), rc(rc), fc(fc) {}
 };
-struct Fctree {
-  Station date;
-  bool operator<(const Fctree& a) {
-    if (date.y < a.date.y)
-      return true;
-    else if (date.y == a.date.y) {
-      if (date.x < a.date.x)
-        return true;
-      else
-        return false;
-    } else
-      return false;
-  }
-  bool operator>(const Fctree& a) {
-    if (date.y > a.date.y)
-      return true;
-    else if (date.y == a.date.y) {
-      if (date.x > a.date.x)
-        return true;
-      else
-        return false;
-    } else
-      return false;
-  }
-};
-
-struct Tree {
-  Node *root = nullptr, *hot = nullptr;
-  void InsertAsRoot(const Station& e);
-  Node*& searchin(Node*& root, const int& e, Node*& hot);
-  Node*& search(const int& e);
-  Node*& itself(Node* e);
-  Node* insert(const Station& e);
-  Node* connect34(Node* a, Node* b, Node* c, Node* l1, Node* l2, Node* l3,
-                  Node* l4);
-  Node* RotateAt(Node* e);
-  void search_leaf(Node*& v, int& i, Node* hot);
+struct rangetree {
+  range_node* _hot = nullptr;
+  range_node* _root = nullptr;
+  range_node*& search(const int& e);
+  void insertAsRoot(const station_type& e);
+  range_node* insert(const station_type& data);
+  range_node*& fromparento(range_node* g);
+  range_node* connect34(range_node* a, range_node* b, range_node* c,
+                        range_node* t0, range_node* t1, range_node* t2,
+                        range_node* t3);
+  range_node* rotateAt(range_node* g);
+  void search_leaf(range_node*& v, int& i, range_node* hot);
   int size = 0;
 };
-void Tree::InsertAsRoot(const Station& e) {
-  root = new Node(e, nullptr);
+bool operator==(const station_type& data1, const station_type& data2) {
+  return ((data1.x == data2.x) && (data1.y == data2.y));
+}
+int stature(range_node* a) { return a ? a->height : -1; }
+void rangetree::insertAsRoot(const station_type& e) {
+  _root = new range_node(e, nullptr);
   size++;
 }
-Node*& Tree::searchin(Node*& root, const int& e, Node*& hot) {
-  if (!root) return root;
-  hot = root;
-  return searchin((root->date.x >= e) ? root->lc : root->rc, e, hot);
+range_node*& searchin(range_node*& v, const int& e, range_node*& hot) {
+  if (!v) return v;
+  hot = v;
+  return searchin((e <= v->data.x) ? v->lc : v->rc, e, hot);
 }
-Node*& Tree::search(const int& e) { return searchin(root, e, hot = nullptr); }
-bool islchind(Node* e) { return e->parent && (e == e->parent->lc); }
-bool isrchind(Node* e) { return e->parent && (e == e->parent->rc); }
-int stature(Node* e) { return e ? e->height : -1; }
-Node* Tallerchild(Node* e) {
-  return (stature(e->lc) > stature(e->rc))   ? e->lc
-         : (stature(e->lc) < stature(e->rc)) ? e->rc
-         : islchind(e)                       ? e->lc
-                                             : e->rc;
+range_node*& rangetree::search(const int& e) {
+  return searchin(_root, e, _hot = nullptr);
 }
-void UpdateHeight(Node* e) {
-  e->height = (stature(e->lc) < stature(e->rc)) ? stature(e->rc) + 1
-                                                : stature(e->lc) + 1;
+bool Balance(range_node* a) {
+  return (stature(a->lc) - stature(a->rc) > -2 &&
+          stature(a->lc) - stature(a->rc) < 2);
 }
-bool Banlance(Node* e) {
-  return (stature(e->lc) - stature(e->rc) < 2) &&
-         (stature(e->lc) - stature(e->rc) > -2);
+bool islchild(range_node* g) { return g->parent && (g->parent->lc == g); }
+bool isrchild(range_node* g) { return g->parent && (g->parent->rc == g); }
+void updateheight(range_node* g) {
+  g->height = (stature(g->lc) < stature(g->rc)) ? stature(g->rc) + 1
+                                                : stature(g->lc) + 1;
 }
-bool operator==(const Station& d1, const Station& d2) {
-  return d1.x == d2.x && d1.y == d2.y;
+range_node* tallerchild(range_node* g) {
+  return (stature(g->lc) > stature(g->rc))   ? g->lc
+         : (stature(g->lc) < stature(g->rc)) ? g->rc
+         : islchild(g)                       ? g->lc
+                                             : g->rc;
 }
-Node*& Tree::itself(Node* e) {
-  if (e->parent)
-    return islchind(e) ? e->parent->lc : e->parent->rc;
-  else
-    return root;
+range_node*& rangetree::fromparento(range_node* g) {
+  if (g->parent) {
+    return islchild(g) ? g->parent->lc : g->parent->rc;
+  } else {
+    return _root;
+  }
 }
-
-Node* Tree::insert(const Station& e) {
-  Node** x = search(e.x);
-  Node* xx = x = new Node(e, hot);
-  for (Node* g = hot; g; g = g->parent) {
-    if (!Banlance(g)) {
-      Node*& temp = itself(g);
-      temp = RotateAt(Tallerchild(Tallerchild(g)));
+range_node* rangetree::insert(const station_type& data) {
+  range_node*& x = search(data.x);
+  range_node* xx = x = new range_node(data, _hot);
+  for (range_node* g = _hot; g; g = g->parent) {
+    if (!Balance(g)) {
+      auto& temp = fromparento(g);
+      temp = rotateAt(tallerchild(tallerchild(g)));
       break;
     } else
-      UpdateHeight(g);
+      updateheight(g);
   }
+  size++;
   return xx;
 }
-Node* Tree::connect34(Node* a, Node* b, Node* c, Node* l1, Node* l2, Node* l3,
-                      Node* l4) {
-  a->lc = l1;
-  if (l1) l1->parent = a;
-  a->rc = l2;
-  if (l2) l2->parent = a;
-  UpdateHeight(a);
-  c->lc = l3;
-  if (l3) l3->parent = c;
-  c->rc = l4;
-  if (l4) l4->parent = c;
-  UpdateHeight(c);
+range_node* rangetree::connect34(range_node* a, range_node* b, range_node* c,
+                                 range_node* t0, range_node* t1, range_node* t2,
+                                 range_node* t3) {
+  a->lc = t0;
+  if (t0) {
+    t0->parent = a;
+  }
+  a->rc = t1;
+  if (t1) {
+    t1->parent = a;
+  }
+  updateheight(a);
+  c->lc = t2;
+  if (t2) {
+    t2->parent = c;
+  }
+  c->rc = t3;
+  if (t3) {
+    t3->parent = c;
+  }
+  updateheight(c);
   b->lc = a;
-  b->rc = c;
   a->parent = b;
+  b->rc = c;
   c->parent = b;
-  UpdateHeight(b);
+  updateheight(b);
   return b;
 }
-Node* Tree::RotateAt(Node* e) {
-  Node* p = e->parent;
-  Node* g = p->parent;
-  if (islchind(p)) {
-    if (islchind(e)) {
+range_node* rangetree::rotateAt(range_node* v) {
+  range_node* p = v->parent;
+  range_node* g = p->parent;
+  if (islchild(p)) {
+    if (islchild(v)) {
       p->parent = g->parent;
-      return connect34(e, p, g, e->lc, e->rc, p->rc, g->rc);
+      return connect34(v, p, g, v->lc, v->rc, p->rc, g->rc);
     } else {
-      e->parent = g->parent;
-      return connect34(p, e, g, p->lc, e->lc, e->rc, g->rc);
+      v->parent = g->parent;
+      return connect34(p, v, g, p->lc, v->lc, v->rc, g->rc);
     }
   } else {
-    if (islchind(e)) {
-      e->parent = g->parent;
-      connect34(g, e, p, g->lc, e->lc, e->rc, p->rc);
+    if (islchild(v)) {
+      v->parent = g->parent;
+      return connect34(g, v, p, g->lc, v->lc, v->rc, p->rc);
     } else {
       p->parent = g->parent;
-      connect34(g, p, e, g->lc, p->lc, e->lc, e->rc);
+      return connect34(g, p, v, g->lc, p->lc, v->lc, v->rc);
     }
   }
 }
-bool isleaf(const Node* e) { return e && !e->lc && !e->rc; }
-void Merge_y(Fctree*& a, Fctree lc[], Fctree rc[], int n_lc, int n_rc) {
-  a = new Fctree[n_lc + n_rc];
+bool isleaf(range_node* root) { return root && (!root->lc && !root->rc); }
+void merge_y(fctree*& a1, fctree data_lc[], fctree data_rc[], int n_lc,
+             int n_rc) {
+  a1 = new fctree[n_lc + n_rc];
   int i = 0, j = 0, k = 0;
   while (i < n_lc && j < n_rc) {
-    if (lc < rc)
-      a[k++].date = lc[i++].date;
+    if (data_lc[i] < data_rc[j])
+      a1[k++].data = data_lc[i++].data;
     else
-      a[k++].date = rc[j++].date;
+      a1[k++].data = data_rc[j++].data;
   }
-  while (i < n_lc) a[k++].date = lc[i++].date;
-  while (j < n_rc) a[k++].date = rc[j++].date;
+  while (j < n_rc) {
+    a1[k++].data = data_rc[j++].data;
+  }
+  while (i < n_lc) {
+    a1[k++].data = data_lc[i++].data;
+  }
 }
-void Tree::search_leaf(Node*& v, int& i, Node* hot) {
+void rangetree::search_leaf(range_node*& v, int& i, range_node* hot) {
   if (!v) {
     if (i < n) {
-      stations[i].c = v = new Node(stations[i], hot);
-      v->fc = new Fctree[1];
-      v->fc->date = stations[i++];
+      stations[i].c = v = new range_node(stations[i], hot);
+      v->fc = new fctree[1];
+      v->fc->data = stations[i++];
       v->fc_size++;
     }
   } else {
@@ -179,95 +196,163 @@ void Tree::search_leaf(Node*& v, int& i, Node* hot) {
     search_leaf(v->lc, i, hot);
     search_leaf(v->rc, i, hot);
     if (v->lc && v->rc) {
-      Merge_y(v, v->lc, v->rc, v->lc->fc_size, v->rc->fc_size);
+      merge_y(v->fc, v->lc->fc, v->rc->fc, v->lc->fc_size, v->rc->fc_size);
       v->fc_size = v->lc->fc_size + v->rc->fc_size;
     } else {
-      v->fc = new Fctree[v->lc->fc_size];
-      for (int i = 0; i < v->lc->fc_size; ++i) v->fc[i].date = v->lc->date;
+      v->fc = new fctree[v->lc->fc_size];
+      for (auto i = 0; i < v->lc->fc_size; i++)
+        v->fc[i].data = v->lc->fc[i].data;
       v->fc_size = v->lc->fc_size;
     }
   }
 }
-void Merge_x(Station stations[], int lo, int mi, int hi) {
-  Station* a = new Station[mi - lo];
-  for (int i = 0; i < mi - lo; ++i) a[i] = stations[lo + i];
+void merge_x(station_type data[], int lo, int mi, int hi) {
+  station_type* a1 = new station_type[mi - lo];
   int i = 0, t = mi - lo;
-  while (i < t && mi < hi) {
-    if (a[i].x < stations[mi].x)
-      stations[lo++] = a[i++];
-    else if ((a[i].x = stations[mi].x) && (a[i].y < stations[mi].y))
-      stations[lo++] = a[i++];
+  for (auto i = 0; i < mi - lo; i++) a1[i] = data[lo + i];
+  while ((mi < hi) && (i < t)) {
+    if (a1[i].x < data[mi].x)
+      data[lo++] = a1[i++];
+    else if (a1[i].x == data[mi].x && a1[i].y < data[mi].y)
+      data[lo++] = a1[i++];
     else
-      station[lo++] = stations[mi++];
+      data[lo++] = data[mi++];
   }
-  while (i < t) stations[lo++] = a[i++];
-  delete[] a;
+  while (i < t) data[lo++] = a1[i++];
+  delete[] a1;
 }
-void Mergesort_x(Station stations[], int lo, int hi) {
-  if (hi - lo < 2)
+void mergesort_x(station_type data[], int lo, int hi) {
+  if (hi - lo > 1) {
+    int mi = (hi + lo) >> 1;
+    mergesort_x(data, lo, mi);
+    mergesort_x(data, mi, hi);
+    merge_x(data, lo, mi, hi);
+  } else
     return;
-  else {
-    int m = (lo + hi) >> 1;
-    Mergesort_x(stations, lo, mi);
-    Mergesort_x(stations, mi, hi);
-    Merge_x(stations, lo, mi, hi);
-  }
 }
-int cnt,road_x1,road_x2;
-long long sum;
-Station stack_x1[100],stack_x2[100];
-void search_x1(Node* root,int x1,int x2,Station stack[],int& road,int lo,int hi){
-  int length=hi;
-  while(lo<hi){
-    int mi=(lo+hi)>>1;
-    stations[mi]<x1?lo=mi+1:hi=mi;
+long long int record = 0;
+int count;
+station_type stack_x1[100], stack_x2[100];
+int road_x1, road_x2;
+void search_x1(range_node* root, int x1, int x2, station_type stack[],
+               int& road, int lo, int hi) {
+  int lenght = hi;
+  while (hi > lo) {
+    int mi = (hi + lo) >> 1;
+    stations[mi].x < x1 ? lo = mi + 1 : hi = mi;
   }
-  if(lo<length&&stations[lo].x<=x2){
-    auto root=stations[lo].c;
-    while(root){
-      stack[road]=root->date;
-      stack[road].c=root;
-      if(!isleaf(stack[road].c)) stack[road].road=stack[road-1].c;
+  if (lo < lenght && stations[lo].x <= x2) {
+    auto root = stations[lo].c;
+    while (root) {
+      stack[road] = root->data;
+      stack[road].c = root;
+      if (!isleaf(stack[road].c)) stack[road].road = stack[road - 1].c;
       road++;
-      root=root->parent;
+      root = root->parent;
     }
   }
 }
-void search_x2(Node* root,int x1,int x2,Station stack[],int& road,int lo,int hi){
-  while(lo<hi){
-    int mi=(lo+hi)>>1;
-    stations[mi]>x2?hi=mi:lo=mi+1;
+void search_x2(range_node* root, int x1, int x2, station_type stack[],
+               int& road, int lo, int hi) {
+  while (hi > lo) {
+    int mi = (hi + lo) >> 1;
+    stations[mi].x > x2 ? hi = mi : lo = mi + 1;
   }
   lo--;
-  if(lo>-1&&stations[lo].x>=x1){
-    auto root=stations[lo].c;
-    while(root){
-      stack[road]=root->date;
-      stack[road].c=root;
-      if(!isleaf(stack[road].c)) stack[road].road=stack[road].c;
+  if (lo > -1 && stations[lo].x >= x1) {
+    auto root = stations[lo].c;
+    while (root) {
+      stack[road] = root->data;
+      stack[road].c = root;
+      if (!isleaf(stack[road].c)) stack[road].road = stack[road - 1].c;
       road++;
-      root=root->parent;
+      root = root->parent;
     }
+  }
+}
+void common_root() {
+  while (0 < road_x1 && 0 < road_x2 &&
+         stack_x1[--road_x1] == stack_x2[--road_x2])
+    ;
+}
+void search_y(range_node* root, int lo, int hi, int y1, int y2) {
+  while (lo < hi) {
+    int mi = (lo + hi) >> 1;
+    y1 <= root->fc[mi].data.y ? hi = mi : lo = mi + 1;
+  }
+  while (lo < root->fc_size && root->fc[lo].data.y <= y2) {
+    record += root->fc[lo].data.temp;
+    count++;
+    lo++;
+  }
+}
+void travelReport(int x1, int x2, int y1, int y2) {
+  while (road_x1 >= 0) {
+    auto rc = stack_x1[road_x1].c->rc;
+    auto lc = stack_x1[road_x1].c->lc;
+    auto road = stack_x1[road_x1].road;
+    if (rc && rc != road) search_y(rc, 0, rc->fc_size, y1, y2);
+    road_x1--;
+  }
+  auto now = stack_x1[0].c;
+  if (now->data.x >= x1 && now->data.x <= x2 && now->data.y >= y1 &&
+      now->data.y <= y2) {
+    count++;
+    record += now->data.temp;
+  }
+  while (road_x2 >= 0) {
+    auto rc = stack_x2[road_x2].c->rc;
+    auto lc = stack_x2[road_x2].c->lc;
+    auto road = stack_x2[road_x2].road;
+    if (lc && lc != road) search_y(lc, 0, lc->fc_size, y1, y2);
+    road_x2--;
+  }
+  now = stack_x2[0].c;
+  if (now->data.x >= x1 && now->data.x <= x2 && now->data.y >= y1 &&
+      now->data.y <= y2) {
+    count++;
+    record += now->data.temp;
   }
 }
 int main() {
-  int n;
   n = GetNumOfStation();
   if (n == 0) {
     Response(0);
     return 0;
   }
-  Tree a;
-  for (int i = 0; i < n; ++i) {
-    int x, y, temp;
+  rangetree a;
+  for (auto i = 0; i < n; i++)
     GetStationInfo(i, &stations[i].x, &stations[i].y, &stations[i].temp);
-  }
-  a.InsertAsRoot(stations[0]);
-  for (int i = 1; i < n; ++i) a.insert(stations[i]);
-  Mergesort_x(stations, 0, n);
+  a.insertAsRoot(stations[0]);
+  for (auto i = 1; i < n; i++) a.insert(stations[i]);
+  mergesort_x(stations, 0, n);
   int i = 0;
-  a.search_leaf(a.root, i, a.hot);
+  a.search_leaf(a._root, i, a._hot);
+  int x1, x2, y1, y2, num = 1;
   while (GetQuery(&x1, &y1, &x2, &y2)) {
-    Response();
+    search_x1(a._root, x1, x2, stack_x1, road_x1, 0, n);
+    search_x2(a._root, x1, x2, stack_x2, road_x2, 0, n);
+    int t1 = road_x1, t2 = road_x2;
+    if (road_x1 && road_x2) {
+      common_root();
+      travelReport(x1, x2, y1, y2);
+      if (count) {
+        Response(record / count);
+      } else {
+        Response(0);
+      }
+    } else {
+      Response(0);
+    }
+    for (auto i = 0; i < t1; i++) {
+      stack_x1[i].c = stack_x1[i].road = nullptr;
+      stack_x1[i].x = stack_x1[i].y = stack_x1[i].temp = 0;
+    }
+    for (auto i = 0; i < t2; i++) {
+      stack_x2[i].c = stack_x2[i].road = nullptr;
+      stack_x2[i].x = stack_x2[i].y = stack_x2[i].temp = 0;
+    }
+    road_x1 = road_x2 = record = count = 0;
   }
+  return 0;
 }
