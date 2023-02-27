@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#define maxn 600000
+#define maxn 300000
 using namespace std;
 int hashing(const string& a) {
   int hashval = 0;
